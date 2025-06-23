@@ -45,42 +45,67 @@
         <div class="text-3xl font-bold">{{ danger_ports|default(0) }}</div>
       </div>
     </div>
-    <!-- 상세 테이블 -->
-    <div class="bg-white bg-opacity-10 rounded-xl shadow-xl p-8">
-      <h2 class="text-2xl font-bold mb-6 text-gradient">포트 상세 정보</h2>
-      <table class="min-w-full text-sm text-white">
-        <thead>
-          <tr class="border-b border-indigo-400">
-            <th class="px-4 py-2 text-left">포트 번호</th>
-            <th class="px-4 py-2 text-left">서비스</th>
-            <th class="px-4 py-2 text-left">프로토콜</th>
-            <th class="px-4 py-2 text-left">위험도</th>
-            <th class="px-4 py-2 text-left">설명</th>
-            <th class="px-4 py-2 text-left">보안 권고</th>
-          </tr>
-        </thead>
-        <tbody>
+    <!-- 상세 카드형 열린 포트 리스트 -->
+    <div class="mt-10">
+      <h2 class="text-2xl font-bold mb-6 text-gradient">열린 포트 상세 정보</h2>
+      {% if open_ports|length > 0 %}
+        <div class="flex flex-col gap-6">
           {% for port in open_ports %}
-          <tr class="border-b border-indigo-800">
-            <td class="px-4 py-2">{{ port.number }}</td>
-            <td class="px-4 py-2">{{ port.service }}</td>
-            <td class="px-4 py-2">{{ port.protocol }}</td>
-            <td class="px-4 py-2">
-              {% if port.risk == '높음' %}
-                <span class="font-bold text-red-400">{{ port.risk }}</span>
-              {% elif port.risk == '중간' %}
-                <span class="font-bold text-yellow-300">{{ port.risk }}</span>
-              {% else %}
-                <span class="font-bold text-green-300">{{ port.risk }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2">{{ port.description }}</td>
-            <td class="px-4 py-2">{{ port.recommendation }}</td>
-          </tr>
+          <div class="bg-white bg-opacity-10 rounded-xl shadow-lg p-6 flex flex-col gap-4 relative">
+            <!-- 솔루션 적용 버튼: 오른쪽 상단 -->
+            <button class="absolute top-4 right-4 px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-semibold shadow hover:bg-indigo-700 transition-colors solution-btn" title="자동 후처리 솔루션 적용(예정)">보안 솔루션 적용</button>
+            <!-- 준비중입니다 토스트 -->
+            <div class="absolute top-12 right-4 z-10 hidden solution-toast">
+              <div class="bg-gray-900 bg-opacity-90 text-white text-xs rounded px-4 py-2 shadow">준비중입니다</div>
+            </div>
+            <!-- 상단: Number, Protocol, Service Name, 위험도 -->
+            <div class="flex flex-row flex-wrap items-center gap-x-8 gap-y-4">
+              <div class="flex flex-row items-center gap-2 min-w-[120px]">
+                <span class="font-bold text-indigo-200">Number</span>
+                <span class="text-lg font-bold">{{ port.number }}</span>
+              </div>
+              <div class="flex flex-row items-center gap-2 min-w-[120px]">
+                <span class="font-bold text-indigo-200">Protocol</span>
+                <span class="px-3 py-1 rounded bg-green-800 text-green-100 text-xs">{{ port.protocol }}</span>
+              </div>
+              <div class="flex flex-row items-center gap-2 min-w-[160px]">
+                <span class="font-bold text-indigo-200">Service Name</span>
+                <span class="px-3 py-1 rounded bg-gray-700 text-gray-200 text-xs">{{ port.service }}</span>
+              </div>
+              <div class="flex flex-row items-center gap-2 min-w-[220px]">
+                <span class="font-bold text-indigo-200">위험도</span>
+                {% if port.risk == '높음' %}
+                  <span class="px-3 py-1 rounded bg-red-700 text-red-200 text-xs font-bold">{{ port.risk }}</span>
+                {% elif port.risk == '중간' %}
+                  <span class="px-3 py-1 rounded bg-yellow-600 text-yellow-100 text-xs font-bold">{{ port.risk }}</span>
+                {% else %}
+                  <span class="px-3 py-1 rounded bg-green-700 text-green-100 text-xs font-bold">{{ port.risk }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <!-- 하단: 기능 설명, 대표 취약점, 방어 전략, 비전문가용 대응 안내 -->
+            <div class="flex flex-row flex-wrap gap-x-8 gap-y-4">
+              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
+                <span class="block text-sm text-indigo-100 font-semibold mb-1">기능 설명</span>
+                <div class="bg-white bg-opacity-20 rounded p-3 text-gray-100 text-sm break-words min-h-[3.5rem]">{{ port.description }}</div>
+              </div>
+              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
+                <span class="block text-sm text-indigo-100 font-semibold mb-1">대표 취약점</span>
+                <div class="bg-white bg-opacity-20 rounded p-3 text-red-100 text-sm break-words min-h-[3.5rem]">{{ port.vulnerabilities or '-' }}</div>
+              </div>
+              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
+                <span class="block text-sm text-indigo-100 font-semibold mb-1">방어 전략</span>
+                <div class="bg-white bg-opacity-20 rounded p-3 text-green-100 text-sm break-words min-h-[3.5rem]">{{ port.recommendation }}</div>
+              </div>
+              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
+                <span class="block text-sm text-indigo-100 font-semibold mb-1">비전문가용 대응 안내</span>
+                <div class="bg-white bg-opacity-20 rounded p-3 text-blue-100 text-sm break-words min-h-[3.5rem]">{{ port.user_tip or '-' }}</div>
+              </div>
+            </div>
+          </div>
           {% endfor %}
-        </tbody>
-      </table>
-      {% if open_ports|length == 0 %}
+        </div>
+      {% else %}
         <div class="text-center text-gray-200 py-8">발견된 열린 포트가 없습니다.</div>
       {% endif %}
     </div>
@@ -98,5 +123,21 @@
       &copy; 2024 ScanPort. All rights reserved.
     </footer>
   </div>
+  <script>
+  // 솔루션 적용 버튼 클릭 시 준비중입니다 토스트 표시
+  window.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.solution-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const card = btn.closest('.relative');
+        const toast = card.querySelector('.solution-toast');
+        if (toast) {
+          toast.classList.remove('hidden');
+          setTimeout(() => toast.classList.add('hidden'), 1500);
+        }
+      });
+    });
+  });
+  </script>
 </body>
 </html>

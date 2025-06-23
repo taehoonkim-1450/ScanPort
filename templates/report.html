@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>보안 포트 점검 리포트</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ css_url if css_url else url_for('static', filename='report.css') }}">
+</head>
+<body>
+    <div class="report-container">
+        <!-- 다운로드 버튼 (웹 뷰에서만 보임) -->
+        {% if not is_pdf %}
+        <div class="download-buttons">
+            <a href="{{ url_for('download_pdf', scan_id=scan_id) }}" class="btn btn-pdf" target="_blank">PDF 다운로드</a>
+        </div>
+        {% endif %}
+
+        <!-- 표지 -->
+        <div class="page cover-page">
+            {% if logo_base64 %}
+                <img src="data:image/png;base64,{{ logo_base64 }}" class="logo" alt="Logo"/>
+            {% else %}
+                <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="Logo"/>
+            {% endif %}
+            <h1>보안 포트 점검 리포트</h1>
+            
+            <div class="meta-info">
+                <p><strong>점검 대상 IP:</strong> {{ ip_address }}</p>
+                <p><strong>점검일:</strong> {{ today_date }}</p>
+                <p><strong>담당자:</strong> {{ user_name }}</p>
+                <p><strong>리포트 작성자:</strong> 김태훈</p>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="page">
+            <h2>Executive Summary</h2>
+            <p>본 리포트는 <strong>{{ ip_address }}</strong> IP 주소에 대한 포트 스캔 결과를 요약하고, 발견된 보안 위험과 권고 사항을 제시합니다.</p>
+            <h3>종합 결과</h3>
+            <table class="summary-table">
+                <tr><th>총 스캔 포트 수</th><td>{{ total_ports }}</td></tr>
+                <tr><th>열린 포트 수</th><td>{{ open_ports|length }}</td></tr>
+                <tr><th>닫힌 포트 수</th><td>{{ closed_ports|length }}</td></tr>
+                <tr><th>위험 포트 감지</th>
+                    <td>
+                        {% if has_danger %}
+                            <span class="danger-high">예</span>
+                        {% else %}
+                            <span class="danger-low">아니오</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr><th>보안 등급</th><td>{{ security_grade }}</td></tr>
+            </table>
+            <br>
+            <h3>주요 발견 사항</h3>
+            <p>
+                {% if open_ports|length > 0 %}
+                    총 {{ open_ports|length }}개의 포트가 외부에 노출되어 있으며, 이 중 위험도가 '높음' 또는 '중간'으로 분류된 포트가 있는지 확인이 필요합니다. 각 포트에 대한 상세 정보와 보안 권고는 다음 페이지를 참고하십시오.
+                {% else %}
+                    점검된 주요 포트가 모두 안전하게 닫혀있는 것으로 확인되었습니다.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- 열린 포트 상세 -->
+        <div class="page">
+            <h2>열린 포트 상세 정보</h2>
+            {% if open_ports %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>포트 번호</th>
+                            <th>서비스</th>
+                            <th>프로토콜</th>
+                            <th>위험도</th>
+                            <th>상세 설명</th>
+                            <th>보안 권고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for port in open_ports %}
+                        <tr>
+                            <td>{{ port.number }}</td>
+                            <td>{{ port.service }}</td>
+                            <td>{{ port.protocol }}</td>
+                            <td><span class="danger-{{ port.risk|lower }}">{{ port.risk }}</span></td>
+                            <td>{{ port.description }}</td>
+                            <td>{{ port.recommendation }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>발견된 열린 포트가 없습니다.</p>
+            {% endif %}
+        </div>
+        
+        <!-- 닫힌 포트 목록 -->
+        <div class="page">
+            <h2>닫힌 포트 목록 ({{ closed_ports|length }}개)</h2>
+            <p>아래 포트들은 외부에서 접근이 차단된 것으로 확인되었습니다. 이는 일반적인 보안 설정에 부합합니다.</p>
+            <div class="closed-ports-list">
+                {% for port in closed_ports %}
+                    <span>{{ port.number }} ({{ port.service }})</span>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- 부록 -->
+        <div class="page appendix">
+            <h2>부록</h2>
+            <h3>사용한 도구</h3>
+            <p>본 점검에는 자체 개발한 Python 기반의 포트 스캔 자동화 도구가 사용되었습니다. (Flask, Socket, PDFKit)</p>
+        
+            <h3>기술 용어 설명</h3>
+            <ul>
+                <li><strong>포트(Port)</strong>: 컴퓨터의 특정 프로세스나 서비스를 식별하기 위한 번호. 네트워크 통신에서 데이터를 올바른 애플리케이션으로 전달하는 역할을 합니다.</li>
+                <li><strong>TCP/UDP</strong>: 인터넷에서 데이터를 주고받는 데 사용되는 핵심 프로토콜. TCP는 신뢰성 있는 연결을, UDP는 빠른 속도를 중시합니다.</li>
+                <li><strong>위험도 분류 기준</strong>:
+                    <ul>
+                        <li><strong class="danger-high">높음</strong>: 외부에 노출될 경우 직접적인 시스템 제어권 탈취, 정보 유출로 이어질 수 있는 심각한 위험.</li>
+                        <li><strong class="danger-medium">중간</strong>: 공격자가 시스템 정보를 수집하거나 다른 공격의 발판으로 삼을 수 있는 중간 수준의 위험.</li>
+                        <li><strong class="danger-low">낮음</strong>: 일반적으로 외부에 공개될 수 있는 서비스이나, 버전 정보 노출 등 잠재적 위험이 존재하는 경우.</li>
+                    </ul>
+                </li>
+            </ul>
+            <footer>
+                <p>본 리포트는 자동화된 도구를 통해 작성되었으며, 실제 보안 상태와는 일부 차이가 있을 수 있습니다.<br>
+                정확한 진단을 위해서는 전문 보안 컨설턴트의 추가 분석이 필요합니다.</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

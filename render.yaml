@@ -1,0 +1,18 @@
+# render.yaml
+# Render.com 배포 설정 파일
+
+services:
+  - type: web
+    name: scanport
+    env: python
+    # 배포 시 실행할 빌드 명령어
+    # Python 의존성 설치 후, wkhtmltopdf를 설치합니다.
+    buildCommand: "pip install -r requirements.txt && apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends xvfb wkhtmltopdf"
+    # 애플리케이션 시작 명령어
+    # gunicorn을 사용하여 app_v04.py의 app을 실행합니다.
+    startCommand: "gunicorn app_v04:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.6
+      - key: SERVER_NAME
+        value: scanport.onrender.com 

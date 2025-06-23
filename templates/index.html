@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ScanPort - 포트 스캐너</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', Dotum, '돋움', sans-serif;
+            background-color: #f4f7f9;
+            color: #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        form input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            background-color: #fff;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+        form input[type="text"]:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .scan-options {
+            margin-bottom: 25px;
+            text-align: left;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .scan-options h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+        .scan-options label {
+            display: block;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-weight: normal;
+            color: #555;
+        }
+        .scan-options input[type="radio"] {
+            margin-right: 8px;
+        }
+        .consent-check {
+            margin-bottom: 20px;
+        }
+        .consent-check a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .consent-check a:hover {
+            text-decoration: underline;
+        }
+        #submitBtn {
+            width: 100%;
+            padding: 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+        #submitBtn:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+        #submitBtn:disabled {
+            background-color: #e9ecef;
+            color: #adb5bd;
+            cursor: not-allowed;
+        }
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1; 
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #555;
+        }
+        .modal-content h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-content h3 {
+            color: #34495e;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .modal-content p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .modal-content ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+            color: #555;
+        }
+        .modal-content li {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+        .close-btn:hover {
+            color: #000;
+        }
+        .progress-container {
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            padding: 3px;
+        }
+        .progress-bar-inner {
+            height: 20px;
+            width: 0%;
+            background-color: #3498db;
+            border-radius: 3px;
+            text-align: center;
+            color: white;
+            line-height: 20px;
+            transition: width 0.4s ease;
+        }
+        .fixed-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+        .fixed-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+        .fixed-info strong {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="form-container">
+            <h1>ScanPort</h1>
+            <form id="scanForm">
+                <label for="ip">IP 주소</label>
+                <input type="text" name="ip" id="ip" placeholder="예: 192.168.0.1" required>
+                
+                <label for="user_name">이름</label>
+                <input type="text" name="user_name" id="user_name" placeholder="예: 홍길동" required>
+
+                <div class="fixed-info">
+                    <p><strong>담당자:</strong> 김태훈</p>
+                </div>
+
+                <div class="scan-options">
+                    <h3>스캔 범위</h3>
+                    <label><input type="radio" name="scan_profile" value="fast" checked> 빠른 스캔 (주요 위험 포트 30개)</label>
+                    <label><input type="radio" name="scan_profile" value="standard"> 표준 스캔 (일반적인 포트 60개)</label>
+                    <label><input type="radio" name="scan_profile" value="detailed"> 상세 스캔 (확장된 포트 100개)</label>
+                </div>
+
+                <div class="scan-options">
+                    <h3>스캔 속도</h3>
+                    <label><input type="radio" name="scan_timeout" value="0.2"> 빠름 (개인/사무실)</label>
+                    <label><input type="radio" name="scan_timeout" value="0.5" checked> 보통 (국내 IDC/웹)</label>
+                    <label><input type="radio" name="scan_timeout" value="1.0"> 느림 (해외/VPN)</label>
+                </div>
+                
+                <div class="consent-check">
+                    <input type="checkbox" id="consentCheckbox">
+                    <label for="consentCheckbox">
+                        <a href="#" id="openModalLink">이용약관 및 개인정보 처리방침</a>에 동의합니다.
+                    </label>
+                </div>
+        
+                <input type="submit" id="submitBtn" value="스캔 시작" disabled>
+            </form>
+        </div>
+
+        <div id="progressContainer" class="progress-container">
+            <p id="statusMessage">스캔을 준비 중입니다...</p>
+            <div class="progress-bar">
+                <div id="progressBarInner" class="progress-bar-inner">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="consentModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>서비스 이용약관 및 개인정보 수집/이용 동의서</h2>
+            
+            <div style="max-height: 400px; overflow-y: auto; margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa;">
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px; margin-top: 0;">제1조 (목적)</h3>
+                <p>본 약관은 ScanPort 서비스(이하 "서비스")의 이용과 관련하여 서비스 제공자와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제2조 (정의)</h3>
+                <p>1. "서비스"란 네트워크 포트 스캔 및 보안 점검을 위한 웹 기반 도구를 의미합니다.<br>
+                2. "이용자"란 본 서비스를 이용하는 개인 또는 법인을 의미합니다.<br>
+                3. "스캔 대상"이란 이용자가 스캔을 요청한 IP 주소 및 관련 시스템을 의미합니다.</p>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제3조 (서비스 이용 조건)</h3>
+                <p>이용자는 다음 조건을 충족해야 합니다:</p>
+                <ul style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 3px solid #e9ecef;">
+                    <li>스캔 대상 시스템에 대한 합법적이고 명시적인 접근 권한을 보유하고 있어야 합니다.</li>
+                    <li>본인의 소유 시스템이거나 명시적 허가를 받은 시스템에 대해서만 스캔을 수행해야 합니다.</li>
+                    <li>관련 법규 및 규정을 준수하여야 합니다.</li>
+                </ul>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제4조 (금지 행위)</h3>
+                <p>다음과 같은 행위는 엄격히 금지됩니다:</p>
+                <ul style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 3px solid #ffc107;">
+                    <li>허가받지 않은 타인의 시스템에 대한 스캔</li>
+                    <li>악의적인 목적(해킹, 공격, 정보 탈취 등)을 위한 서비스 이용</li>
+                    <li>서비스의 정상적인 운영을 방해하는 행위</li>
+                    <li>타인의 개인정보를 무단으로 수집, 이용하는 행위</li>
+                </ul>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제5조 (개인정보 수집 및 이용)</h3>
+                <p><strong style="color: #e74c3c;">수집하는 개인정보:</strong></p>
+                <ul style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; border-left: 3px solid #3498db;">
+                    <li>고객사명, 담당자명</li>
+                    <li>스캔 대상 IP 주소</li>
+                    <li>스캔 결과 및 리포트 데이터</li>
+                    <li>서비스 이용 로그</li>
+                </ul>
+                <p><strong style="color: #27ae60;">이용 목적:</strong></p>
+                <ul style="background-color: #e8f8f5; padding: 15px; border-radius: 5px; border-left: 3px solid #27ae60;">
+                    <li>포트 스캔 서비스 제공</li>
+                    <li>보안 점검 리포트 생성</li>
+                    <li>서비스 품질 개선</li>
+                    <li>법적 분쟁 해결</li>
+                </ul>
+                <p><strong style="color: #f39c12;">보관 기간:</strong> 스캔 완료 후 1년간 보관 후 자동 삭제</p>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제6조 (책임 및 면책)</h3>
+                <p>1. 이용자는 본 서비스 이용으로 인해 발생하는 모든 법적 책임을 부담합니다.<br>
+                2. 서비스 제공자는 이용자의 부적절한 사용으로 인한 손해에 대해 책임지지 않습니다.<br>
+                3. 서비스 제공자는 서비스의 중단, 오류 등으로 인한 손해에 대해 책임지지 않습니다.</p>
+                
+                <h3 style="color: #2c3e50; border-left: 4px solid #3498db; padding-left: 10px;">제7조 (준거법 및 관할법원)</h3>
+                <p>본 약관은 대한민국 법률에 따라 해석되며, 분쟁 발생 시 서울중앙지방법원을 관할법원으로 합니다.</p>
+                
+                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; padding: 15px; margin-top: 20px;">
+                    <p style="margin: 0; font-weight: bold; color: #721c24; text-align: center;">
+                        ⚠️ 본 동의서에 동의함으로써 위의 모든 약관에 동의하는 것으로 간주됩니다.
+                    </p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="document.getElementById('consentModal').style.display='none'" style="background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal-related script
+        var modal = document.getElementById('consentModal');
+        var link = document.getElementById('openModalLink');
+        var closeBtn = document.getElementsByClassName('close-btn')[0];
+        link.onclick = function(e) { e.preventDefault(); modal.style.display = 'block'; }
+        closeBtn.onclick = function() { modal.style.display = 'none'; }
+        window.onclick = function(event) { if (event.target == modal) { modal.style.display = 'none'; } }
+
+        // 이용약관 동의 시 버튼 활성화
+        document.getElementById('consentCheckbox').addEventListener('change', function() {
+            document.getElementById('submitBtn').disabled = !this.checked;
+        });
+
+        // 스캔 시작
+        document.getElementById('scanForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'block';
+
+            fetch('/start-scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // 서버가 4xx, 5xx 에러를 반환했을 때
+                    return response.json().then(err => {
+                        throw new Error(err.error || '알 수 없는 서버 오류');
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.error) {
+                    // 서버가 200 OK와 함께 에러 메시지를 보냈을 때
+                    throw new Error(result.error);
+                }
+                const scanId = result.scan_id;
+                checkScanStatus(scanId);
+            })
+            .catch(error => {
+                alert('오류: ' + error.message);
+                console.error('Error:', error);
+                location.reload(); // 페이지 새로고침으로 UI 초기화
+            });
+        });
+
+        function checkScanStatus(scanId) {
+            const progressBarInner = document.getElementById('progressBarInner');
+            const statusMessage = document.getElementById('statusMessage');
+
+            const intervalId = setInterval(() => {
+                fetch(`/scan-status/${scanId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'running') {
+                            progressBarInner.style.width = data.progress + '%';
+                            progressBarInner.textContent = Math.round(data.progress) + '%';
+                            statusMessage.textContent = data.message;
+                        } else if (data.status === 'complete') {
+                            clearInterval(intervalId);
+                            progressBarInner.style.width = '100%';
+                            progressBarInner.textContent = '100%';
+                            statusMessage.textContent = '리포트 페이지로 이동합니다...';
+                            window.location.href = `/report/${scanId}`;
+                        } else if (data.status === 'not_found') {
+                             clearInterval(intervalId);
+                             throw new Error('스캔 작업을 찾을 수 없습니다.');
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(intervalId);
+                        alert('오류: ' + error.message);
+                        console.error('Error:', error);
+                        location.reload();
+                    });
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

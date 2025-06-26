@@ -18,89 +18,100 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        min-width: 180px;
-        min-height: 100px;
+        min-width: 140px;
+        min-height: 80px;
         box-shadow: 0 2px 12px 0 rgba(0,0,0,0.12);
       }
     </style>
 </head>
 <body>
-  <div class="container mx-auto px-4 py-12">
-    <!-- 상단 요약 카드 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-      <div class="dashboard-card bg-gray-800">
-        <div class="text-gray-300 text-sm mb-2">총 스캔 포트</div>
-        <div class="text-3xl font-bold">{{ total_ports }}</div>
+  <!-- =================== 헤더 =================== -->
+  <header class="py-6 px-8 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <img src="/static/logo.png" alt="ScanPort Logo" class="h-10 w-10 rounded-full shadow-lg"/>
+      <h1 class="text-2xl font-bold tracking-wide">ScanPort</h1>
+    </div>
+    <nav>
+      <ul class="flex space-x-6 text-sm">
+        <li><a class="hover:text-indigo-300" href="/">HOME</a></li>
+        <li><a class="hover:text-indigo-300" href="#">CONTACT</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container mx-auto px-4 py-12 mt-8">
+
+    <!-- ========== 2. 스캔 정보(일시, 담당자, 사용자) ========== -->
+    <div class="flex flex-wrap gap-6 items-center mb-8 text-sm text-gray-200">
+      <div>스캔 일시: <span class="font-semibold text-white">{{ today_date }}</span></div>
+      <div>담당자: <span class="font-semibold text-white">김태훈</span></div>
+      <div>사용자: <span class="font-semibold text-white">{{ user_name }}</span></div>
+    </div>
+
+    <!-- ========== 1. 최상단 요약 카드 ========== -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div class="dashboard-card bg-blue-800">
+        <div class="text-blue-100 text-sm mb-2">스캔 IP</div>
+        <div class="text-2xl font-bold text-white">{{ ip_address }}</div>
       </div>
-      <div class="dashboard-card bg-green-700">
-        <div class="text-green-100 text-sm mb-2">열린 포트</div>
-        <div class="text-3xl font-bold">{{ open_ports|length }}</div>
+      <div class="dashboard-card bg-gray-900">
+        <div class="text-gray-300 text-sm mb-2">총 스캔 포트</div>
+        <div class="text-3xl font-bold text-white">{{ total_ports }}</div>
       </div>
       <div class="dashboard-card bg-red-700">
-        <div class="text-red-100 text-sm mb-2">닫힌 포트</div>
-        <div class="text-3xl font-bold">{{ closed_ports|length }}</div>
+        <div class="text-red-100 text-sm mb-2">열린 포트</div>
+        <div class="text-3xl font-bold text-white">{{ open_ports|length }}</div>
       </div>
-      <div class="dashboard-card bg-yellow-600">
-        <div class="text-yellow-100 text-sm mb-2">위험 포트</div>
-        <div class="text-3xl font-bold">{{ danger_ports|default(0) }}</div>
+      <div class="dashboard-card bg-green-700">
+        <div class="text-green-100 text-sm mb-2">닫힌 포트</div>
+        <div class="text-3xl font-bold text-white">{{ closed_ports|length }}</div>
       </div>
     </div>
-    <!-- 상세 카드형 열린 포트 리스트 -->
-    <div class="mt-10">
+
+    <!-- ========== 4. 열린 포트 상세 카드 리스트 ========== -->
+    <div>
       <h2 class="text-2xl font-bold mb-6 text-gradient">열린 포트 상세 정보</h2>
       {% if open_ports|length > 0 %}
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-4">
+          <!-- 헤더 row -->
+          <div class="grid grid-cols-6 gap-2 bg-gray-900 bg-opacity-70 rounded-lg px-2 py-3 text-center font-bold text-sm text-indigo-100">
+            <div>포트 번호</div>
+            <div>위험도</div>
+            <div>프로토콜</div>
+            <div>서비스 이름</div>
+            <div>보고서</div>
+            <div>보안 솔루션</div>
+          </div>
           {% for port in open_ports %}
-          <div class="bg-white bg-opacity-10 rounded-xl shadow-lg p-6 flex flex-col gap-4 relative">
-            <!-- 솔루션 적용 버튼: 오른쪽 상단 -->
-            <button class="absolute top-4 right-4 px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-semibold shadow hover:bg-indigo-700 transition-colors solution-btn" title="자동 후처리 솔루션 적용(예정)">보안 솔루션 적용</button>
-            <!-- 준비중입니다 토스트 -->
-            <div class="absolute top-12 right-4 z-10 hidden solution-toast">
-              <div class="bg-gray-900 bg-opacity-90 text-white text-xs rounded px-4 py-2 shadow">준비중입니다</div>
+          <div class="grid grid-cols-6 gap-2 bg-white bg-opacity-10 rounded-lg px-2 py-4 items-center text-center">
+            <!-- 1. 포트 번호 -->
+            <div class="text-lg font-extrabold text-white">{{ port.number }}</div>
+            <!-- 2. 위험도 -->
+            <div>
+              {% if port.risk == '매우 높음' %}
+                <span class="px-3 py-1 rounded bg-red-800 text-red-100 text-xs font-bold">{{ port.risk }}</span>
+              {% elif port.risk == '높음' %}
+                <span class="px-3 py-1 rounded bg-red-700 text-red-200 text-xs font-bold">{{ port.risk }}</span>
+              {% elif port.risk == '중간' %}
+                <span class="px-3 py-1 rounded bg-yellow-600 text-yellow-100 text-xs font-bold">{{ port.risk }}</span>
+              {% else %}
+                <span class="px-3 py-1 rounded bg-green-700 text-green-100 text-xs font-bold">{{ port.risk }}</span>
+              {% endif %}
             </div>
-            <!-- 상단: Number, Protocol, Service Name, 위험도 -->
-            <div class="flex flex-row flex-wrap items-center gap-x-8 gap-y-4">
-              <div class="flex flex-row items-center gap-2 min-w-[120px]">
-                <span class="font-bold text-indigo-200">Number</span>
-                <span class="text-lg font-bold">{{ port.number }}</span>
-              </div>
-              <div class="flex flex-row items-center gap-2 min-w-[120px]">
-                <span class="font-bold text-indigo-200">Protocol</span>
-                <span class="px-3 py-1 rounded bg-green-800 text-green-100 text-xs">{{ port.protocol }}</span>
-              </div>
-              <div class="flex flex-row items-center gap-2 min-w-[160px]">
-                <span class="font-bold text-indigo-200">Service Name</span>
-                <span class="px-3 py-1 rounded bg-gray-700 text-gray-200 text-xs">{{ port.service }}</span>
-              </div>
-              <div class="flex flex-row items-center gap-2 min-w-[220px]">
-                <span class="font-bold text-indigo-200">위험도</span>
-                {% if port.risk == '높음' %}
-                  <span class="px-3 py-1 rounded bg-red-700 text-red-200 text-xs font-bold">{{ port.risk }}</span>
-                {% elif port.risk == '중간' %}
-                  <span class="px-3 py-1 rounded bg-yellow-600 text-yellow-100 text-xs font-bold">{{ port.risk }}</span>
-                {% else %}
-                  <span class="px-3 py-1 rounded bg-green-700 text-green-100 text-xs font-bold">{{ port.risk }}</span>
-                {% endif %}
-              </div>
+            <!-- 3. 프로토콜 -->
+            <div class="text-base text-white">{{ port.protocol }}</div>
+            <!-- 4. 서비스 이름 -->
+            <div class="text-base text-white">{{ port.service }}</div>
+            <!-- 5. Report 작성 버튼 -->
+            <div>
+              <button class="report-btn px-4 py-2 rounded bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700 transition-colors text-xs sm:text-base" data-port="{{ port.number }}" data-protocol="{{ port.protocol }}" data-service="{{ port.service }}" data-description="{{ port.description }}" data-vulnerabilities="{{ port.vulnerabilities }}" data-recommendation="{{ port.recommendation }}">확인</button>
+              {% if port.description == '업데이트 진행중' or port.service == 'Unknown' %}
+                <button class="gpt-analyze-btn ml-2 px-4 py-2 rounded bg-pink-600 text-white font-bold shadow hover:bg-pink-700 transition-colors text-xs sm:text-base" data-port="{{ port.number }}" data-protocol="{{ port.protocol }}" data-service="{{ port.service }}">AI 분석</button>
+              {% endif %}
             </div>
-            <!-- 하단: 기능 설명, 대표 취약점, 방어 전략, 비전문가용 대응 안내 -->
-            <div class="flex flex-row flex-wrap gap-x-8 gap-y-4">
-              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
-                <span class="block text-sm text-indigo-100 font-semibold mb-1">기능 설명</span>
-                <div class="bg-white bg-opacity-20 rounded p-3 text-gray-100 text-sm break-words min-h-[3.5rem]">{{ port.description }}</div>
-              </div>
-              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
-                <span class="block text-sm text-indigo-100 font-semibold mb-1">대표 취약점</span>
-                <div class="bg-white bg-opacity-20 rounded p-3 text-red-100 text-sm break-words min-h-[3.5rem]">{{ port.vulnerabilities or '-' }}</div>
-              </div>
-              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
-                <span class="block text-sm text-indigo-100 font-semibold mb-1">방어 전략</span>
-                <div class="bg-white bg-opacity-20 rounded p-3 text-green-100 text-sm break-words min-h-[3.5rem]">{{ port.recommendation }}</div>
-              </div>
-              <div class="flex flex-col flex-1 min-w-0 basis-1/4">
-                <span class="block text-sm text-indigo-100 font-semibold mb-1">비전문가용 대응 안내</span>
-                <div class="bg-white bg-opacity-20 rounded p-3 text-blue-100 text-sm break-words min-h-[3.5rem]">{{ port.user_tip or '-' }}</div>
-              </div>
+            <!-- 6. 보안 솔루션 적용 버튼 -->
+            <div>
+              <button class="solution-btn px-4 py-2 rounded bg-green-700 text-white font-bold shadow hover:bg-green-800 transition-colors text-xs sm:text-base" disabled>보안 솔루션 적용</button>
             </div>
           </div>
           {% endfor %}
@@ -109,8 +120,27 @@
         <div class="text-center text-gray-200 py-8">발견된 열린 포트가 없습니다.</div>
       {% endif %}
     </div>
-    <!-- 닫힌 포트 목록 -->
-    <div class="bg-white bg-opacity-5 rounded-xl shadow-lg p-6 mt-10">
+    <!-- ========== 5. Report 정보 모달 ========== -->
+    <div id="reportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full relative text-gray-900">
+        <span id="closeReportModal" class="absolute top-4 right-6 text-3xl text-gray-400 cursor-pointer">&times;</span>
+        <h2 class="text-2xl font-bold text-center mb-6 text-indigo-700">포트 상세 정보</h2>
+        <div class="space-y-4">
+          <div><b>포트 번호:</b> <span id="modalPortNumber"></span></div>
+          <div><b>프로토콜:</b> <span id="modalProtocol"></span></div>
+          <div><b>서비스 이름:</b> <span id="modalService"></span></div>
+          <div><b>기본 정보:</b> <span id="modalDescription"></span></div>
+          <div><b>주요 취약점 및 공격 시나리오:</b> <span id="modalVulnerabilities"></span></div>
+          <div><b>기술적 대응 전략:</b> <span id="modalRecommendation"></span></div>
+          <div id="aiNotice" class="text-xs text-blue-600 font-semibold"></div>
+        </div>
+        <div class="flex justify-end mt-6">
+          <button type="button" id="cancelReportBtn" class="px-6 py-2 rounded bg-gray-400 text-white font-bold hover:bg-gray-600">닫기</button>
+        </div>
+      </div>
+    </div>
+    <!-- ========== 6. 닫힌 포트 목록 ========== -->
+    <div class="bg-white bg-opacity-5 rounded-xl shadow-lg p-6 mt-10 max-h-64 overflow-y-auto">
       <h3 class="text-lg font-semibold mb-2 text-indigo-200">닫힌 포트 목록 ({{ closed_ports|length }}개)</h3>
       <div class="flex flex-wrap gap-2">
         {% for port in closed_ports %}
@@ -118,24 +148,108 @@
         {% endfor %}
       </div>
     </div>
-    <!-- 하단 안내 -->
+    <!-- ========== 7. 푸터 ========== -->
     <footer class="mt-12 text-center text-gray-400 text-xs">
       &copy; 2024 ScanPort. All rights reserved.
     </footer>
   </div>
+  <!-- ========== 8. 스크립트(모달/차트) ========== -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-  // 솔루션 적용 버튼 클릭 시 준비중입니다 토스트 표시
-  window.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.solution-btn').forEach(function(btn) {
+  document.addEventListener('DOMContentLoaded', function () {
+    // Report 버튼 클릭 시 정보 표시
+    document.querySelectorAll('.report-btn').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
-        const card = btn.closest('.relative');
-        const toast = card.querySelector('.solution-toast');
-        if (toast) {
-          toast.classList.remove('hidden');
-          setTimeout(() => toast.classList.add('hidden'), 1500);
-        }
+        document.getElementById('reportModal').classList.remove('hidden');
+        document.getElementById('reportModal').classList.add('flex');
+        document.getElementById('modalPortNumber').textContent = btn.getAttribute('data-port') || '';
+        document.getElementById('modalProtocol').textContent = btn.getAttribute('data-protocol') || '';
+        document.getElementById('modalService').textContent = btn.getAttribute('data-service') || '';
+        document.getElementById('modalDescription').textContent = btn.getAttribute('data-description') || '';
+        document.getElementById('modalVulnerabilities').textContent = btn.getAttribute('data-vulnerabilities') || '';
+        document.getElementById('modalRecommendation').textContent = btn.getAttribute('data-recommendation') || '';
+        document.getElementById('aiNotice').textContent = '';
       });
+    });
+    // AI 분석 버튼 클릭 시 GPT 분석 fetch
+    document.querySelectorAll('.gpt-analyze-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('reportModal').classList.remove('hidden');
+        document.getElementById('reportModal').classList.add('flex');
+        document.getElementById('modalPortNumber').textContent = btn.getAttribute('data-port') || '';
+        document.getElementById('modalProtocol').textContent = btn.getAttribute('data-protocol') || '';
+        document.getElementById('modalService').textContent = btn.getAttribute('data-service') || '';
+        const descEl = document.getElementById('modalDescription');
+        const vulEl = document.getElementById('modalVulnerabilities');
+        const recEl = document.getElementById('modalRecommendation');
+        const aiNotice = document.getElementById('aiNotice');
+        descEl.textContent = 'AI 분석 중...';
+        vulEl.textContent = 'AI 분석 중...';
+        recEl.textContent = 'AI 분석 중...';
+        aiNotice.textContent = 'AI가 자동으로 분석한 결과입니다.';
+        fetch('/api/gpt-port-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            port: btn.getAttribute('data-port'),
+            protocol: btn.getAttribute('data-protocol'),
+            service: btn.getAttribute('data-service')
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          descEl.textContent = data.description || '-';
+          vulEl.textContent = data.vulnerabilities || '-';
+          recEl.textContent = data.recommendation || '-';
+          aiNotice.textContent = 'AI가 자동으로 분석한 결과입니다.';
+        })
+        .catch(() => {
+          descEl.textContent = '-';
+          vulEl.textContent = '-';
+          recEl.textContent = '-';
+          aiNotice.textContent = 'AI 분석에 실패했습니다.';
+        });
+      });
+    });
+    // 모달 닫기
+    document.getElementById('closeReportModal').onclick = closeModal;
+    document.getElementById('cancelReportBtn').onclick = closeModal;
+    function closeModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+      document.getElementById('reportModal').classList.remove('flex');
+    }
+    // 저장 버튼(임시, 실제 저장은 JS에서만)
+    document.getElementById('saveReportBtn').onclick = function() {
+      alert('입력한 내용이 임시로 저장되었습니다. (실제 저장은 서버 연동 필요)');
+      closeModal();
+    };
+    // Chart.js 파이차트
+    const ctx = document.getElementById('riskPieChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['매우 높음', '높음', '중간', '낮음'],
+        datasets: [{
+          data: [
+            {{ open_ports|selectattr('risk', 'equalto', '매우 높음')|list|length }},
+            {{ open_ports|selectattr('risk', 'equalto', '높음')|list|length }},
+            {{ open_ports|selectattr('risk', 'equalto', '중간')|list|length }},
+            {{ open_ports|selectattr('risk', 'equalto', '낮음')|list|length }}
+          ],
+          backgroundColor: ['#ef4444', '#f97316', '#eab308', '#10b981'],
+          borderColor: '#1e1e2f',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            labels: { color: '#fff' }
+          }
+        }
+      }
     });
   });
   </script>

@@ -212,6 +212,8 @@ class ReportGenerator:
             ]))
             
             story.append(ports_table)
+
+        
         
         # PDF 생성
         doc.build(story)

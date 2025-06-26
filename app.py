@@ -10,6 +10,12 @@ from utils import generate_scan_id, create_consent_form, validate_ip_address, va
 from config import Config
 from notion_utils import add_scan_result_to_notion
 import logging
+import os
+import openai
+from dotenv import load_dotenv
+from flask import Blueprint
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -23,12 +29,20 @@ reporter = ReportGenerator()
 
 @app.route("/", methods=["GET"])
 def index():
-    """메인 페이지를 렌더링합니다."""
+    """
+    메인 페이지 렌더링 라우트
+    - index.html 반환
+    - 추후 main_bp Blueprint로 분리 가능
+    """
     return render_template("index.html")
 
 @app.route("/start-scan", methods=["POST"])
 def start_scan():
-    """포트 스캔을 시작합니다."""
+    """
+    포트 스캔 시작 라우트
+    - 입력 검증, 동의서 생성, 스캔 시작
+    - scan_bp Blueprint로 분리 추천
+    """
     try:
         logging.info(f"Request Headers: {request.headers}")
         logging.info(f"Request Body: {request.data}")
@@ -71,7 +85,10 @@ def start_scan():
 
 @app.route("/scan-status/<scan_id>")
 def scan_status(scan_id):
-    """스캔 상태를 반환합니다."""
+    """
+    스캔 상태 반환 라우트
+    - scan_bp Blueprint로 분리 추천
+    """
     try:
         status = scanner.get_scan_status(scan_id)
         return jsonify(status)
@@ -80,7 +97,10 @@ def scan_status(scan_id):
 
 @app.route("/report/<scan_id>")
 def report(scan_id):
-    """완료된 스캔의 리포트 페이지를 렌더링합니다."""
+    """
+    스캔 결과 리포트 페이지 렌더링 라우트
+    - report_bp Blueprint로 분리 추천
+    """
     try:
         result = scanner.get_scan_result(scan_id)
         if result:
@@ -92,7 +112,10 @@ def report(scan_id):
 
 @app.route("/download/excel/<scan_id>")
 def download_excel(scan_id):
-    """Excel 리포트를 다운로드합니다."""
+    """
+    Excel 리포트 다운로드 라우트
+    - report_bp Blueprint로 분리 추천
+    """
     try:
         result = scanner.get_scan_result(scan_id)
         if not result:
@@ -143,7 +166,10 @@ def download_excel(scan_id):
 
 @app.route("/download/pdf/<scan_id>")
 def download_pdf(scan_id):
-    """PDF 리포트를 다운로드합니다."""
+    """
+    PDF 리포트 다운로드 라우트
+    - report_bp Blueprint로 분리 추천
+    """
     try:
         result = scanner.get_scan_result(scan_id)
         if not result:
@@ -162,6 +188,46 @@ def download_pdf(scan_id):
         
     except Exception as e:
         return jsonify({'error': f'PDF 다운로드 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@app.route('/api/gpt-port-info', methods=['POST'])
+def gpt_port_info():
+    """
+    OpenAI GPT를 통한 포트 정보 분석 API 라우트
+    - api_bp Blueprint로 분리 추천
+    """
+    data = request.json
+    port = data.get('port')
+    protocol = data.get('protocol')
+    service = data.get('service')
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'OpenAI API 키가 설정되어 있지 않습니다.'}), 500
+    openai.api_key = api_key
+    prompt = f"""
+    네트워크 포트 {port} ({protocol}, {service})에 대해 아래 항목을 한국어로 간결하게 설명해줘.
+    1. 주요 보안 취약점 및 공격 시나리오
+    2. 기술적 대응 전략
+    답변은 각각 200자 이내로, 마크다운 없이 plain text로.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.7
+        )
+        content = response['choices'][0]['message']['content']
+        # 간단한 파싱 (1. ...\n2. ...)
+        parts = content.split('2.')
+        vulnerabilities = parts[0].replace('1.', '').strip() if len(parts) > 1 else ''
+        recommendation = parts[1].strip() if len(parts) > 1 else ''
+        return jsonify({
+            'description': f'{port}번 포트({service})의 AI 자동 분석 결과입니다.',
+            'vulnerabilities': vulnerabilities,
+            'recommendation': recommendation
+        })
+    except Exception as e:
+        return jsonify({'error': f'AI 분석 실패: {str(e)}'}), 500
 
 @app.errorhandler(404)
 def not_found(error):

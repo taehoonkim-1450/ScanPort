@@ -18,7 +18,7 @@ class Config:
     DATABASE_ID = os.environ.get('DATABASE_ID', 'YOUR_DATABASE_ID_HERE')
     
     # 스캔 설정
-    DEFAULT_TIMEOUT = 0.5
+    DEFAULT_TIMEOUT = 0.2
     DEFAULT_SCAN_PROFILE = 'fast'
     
     # 담당자 정보

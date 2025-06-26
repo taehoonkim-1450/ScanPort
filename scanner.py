@@ -3,11 +3,14 @@
 포트 스캔 로직과 관련 기능들을 담당합니다.
 """
 
+import openai
+import os   
 import socket
 import threading
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from config import Config
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class PortScanner:
     """포트 스캐너 클래스"""
@@ -17,80 +20,93 @@ class PortScanner:
     
     def start_scan(self, scan_id: str, ip: str, user_name: str, 
                    scan_profile: str, timeout: float) -> None:
-        """백그라운드에서 포트 스캔을 시작합니다."""
+        """
+        백그라운드에서 포트 스캔을 시작합니다.
+        scan_id: 스캔 식별자
+        ip: 대상 IP
+        user_name: 사용자명
+        scan_profile: 스캔 프로필
+        timeout: 포트별 타임아웃
+        """
         ports_to_scan = Config.get_ports_for_profile(scan_profile)
-        
-        # 스캔 작업 초기화
         self.scan_jobs[scan_id] = {
             'status': 'pending',
             'progress': 0,
             'message': 'Initializing scan...'
         }
-        
-        # 백그라운드 스레드에서 스캔 실행
+        # ThreadPoolExecutor를 사용해 병렬 스캔
         thread = threading.Thread(
-            target=self._run_scan,
+            target=self._run_scan_parallel,  # 변경된 함수명
             args=(scan_id, ip, user_name, ports_to_scan, timeout, scan_profile)
         )
         thread.start()
     
-    def _run_scan(self, scan_id: str, ip: str, user_name: str, 
+    def _run_scan_parallel(self, scan_id: str, ip: str, user_name: str, 
                   ports_to_scan: List[int], timeout: float, scan_profile: str) -> None:
-        """실제 포트 스캔을 수행합니다."""
+        """
+        ThreadPoolExecutor로 병렬 포트 스캔을 수행합니다.
+        """
         job = self.scan_jobs[scan_id]
         job['status'] = 'running'
-        
         open_ports = []
         closed_ports = []
         total_ports = len(ports_to_scan)
-        
-        for i, port_num in enumerate(ports_to_scan):
-            # 진행률 업데이트
-            job['message'] = f"Scanning port {port_num}... ({i+1}/{total_ports})"
-            job['progress'] = ((i + 1) / total_ports) * 100
-            
-            # 포트 스캔
-            port_data = self._scan_single_port(ip, port_num, timeout)
-            
-            if port_data['status'] == 'open':
-                open_ports.append(port_data)
-            else:
-                closed_ports.append(port_data)
-        
+        # 병렬 스캔 실행
+        with ThreadPoolExecutor(max_workers=min(100, total_ports)) as executor:
+            future_to_port = {executor.submit(self._scan_single_port, ip, port, timeout): port for port in ports_to_scan}
+            for i, future in enumerate(as_completed(future_to_port)):
+                port_data = future.result()
+                # 결과 분류
+                if port_data['status'] == 'open':
+                    open_ports.append(port_data)
+                else:
+                    closed_ports.append(port_data)
+                # 진행률 업데이트
+                job['message'] = f"Scanning port {port_data['number']}... ({i+1}/{total_ports})"
+                job['progress'] = ((i + 1) / total_ports) * 100
         # 스캔 완료 처리
         job['status'] = 'complete'
         job['message'] = 'Scan complete. Generating report...'
-        
-        # 결과 데이터 구성
         report_data = self._create_report_data(
             scan_id, ip, user_name, total_ports, open_ports, closed_ports
         )
         job['result'] = report_data
     
     def _scan_single_port(self, ip: str, port: int, timeout: float) -> Dict[str, Any]:
-        """단일 포트를 스캔합니다."""
+        """
+        단일 포트에 대해 소켓 연결을 시도하여 오픈/클로즈 상태와 포트 정보를 반환합니다.
+        """
         port_info = Config.get_port_info(port)
-        
+        result = self._make_port_result(port, port_info)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(timeout)
             try:
                 s.connect((ip, port))
-                return {
-                    "number": port,
-                    "service": port_info.get("service", "Unknown"),
-                    "protocol": port_info.get("protocol", "N/A"),
-                    "risk": port_info.get("risk", "낮음"),
-                    "description": port_info.get("description", ""),
-                    "vulnerabilities": port_info.get("vulnerabilities", ""),
-                    "recommendation": port_info.get("recommendation", ""),
-                    "status": "open"
-                }
+                result["status"] = "open"
+                if not port_info.get("description"):
+                    result["description"] = "업데이트 진행중"
+                    result["vulnerabilities"] = "업데이트 진행중"
+                    result["recommendation"] = "업데이트 진행중"
+                    result["gpt_generated"] = False
+                else:
+                    result["gpt_generated"] = False
             except (socket.timeout, socket.error):
-                return {
-                    "number": port,
-                    "service": port_info.get("service", "Unknown"),
-                    "status": "closed"
-                }
+                result["status"] = "closed"
+        return result
+
+    def _make_port_result(self, port: int, port_info: dict) -> dict:
+        """
+        포트 번호와 포트 정보로 결과 딕셔너리를 생성합니다.
+        """
+        return {
+            "number": port,
+            "service": port_info.get("service", "Unknown"),
+            "protocol": port_info.get("protocol", "N/A"),
+            "risk": port_info.get("risk", "낮음"),
+            "description": port_info.get("description", ""),
+            "vulnerabilities": port_info.get("vulnerabilities", ""),
+            "recommendation": port_info.get("recommendation", ""),
+        }
     
     def _create_report_data(self, scan_id: str, ip: str, user_name: str,
                            total_ports: int, open_ports: List[Dict], 
@@ -99,7 +115,7 @@ class PortScanner:
         return {
             "scan_id": scan_id,
             "ip_address": ip,
-            "today_date": datetime.now().strftime("%Y-%m-%d"),
+            "today_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "user_name": user_name,
             "total_ports": total_ports,
             "open_ports": open_ports,
